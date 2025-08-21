@@ -30,3 +30,33 @@
 
 ---
 
+#!/bin/sh
+echo "Running changelog generator..."
+
+# Get repo root
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+CHANGELOG_SCRIPT="$REPO_ROOT/.git-changelog/generate_changelog.py"
+CHANGELOG_FILE="$REPO_ROOT/CHANGELOG.md"
+
+# Detect Python (Windows venv, Linux/Mac venv, or fallback)
+if [ -f "$REPO_ROOT/venv/Scripts/python.exe" ]; then
+    PYTHON_CMD="$REPO_ROOT/venv/Scripts/python.exe"
+elif [ -f "$REPO_ROOT/venv/bin/python" ]; then
+    PYTHON_CMD="$REPO_ROOT/venv/bin/python"
+else
+    PYTHON_CMD="python3"
+fi
+
+# Run generator
+"$PYTHON_CMD" "$CHANGELOG_SCRIPT"
+
+# Stage changelog
+git add "$CHANGELOG_FILE"
+
+# Amend last commit if changelog changed
+if ! git diff --cached --quiet "$CHANGELOG_FILE"; then
+    git commit --amend --no-edit --no-verify
+    echo "CHANGELOG.md updated and commit amended."
+else
+    echo "No changes in CHANGELOG.md."
+fi
