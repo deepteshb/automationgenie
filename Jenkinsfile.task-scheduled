@@ -1,0 +1,39 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: playbook
+    image: your-artifactory.example.com/automation-tool:latest
+    command:
+    - cat
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  volumes:
+  - name: workspace
+    emptyDir: {}
+"""
+            defaultContainer 'playbook'
+        }
+    }
+    triggers {
+        cron('30 2 * * *') // Every day at 2:30 AM (example)
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Run Task') {
+            steps {
+                container('playbook') {
+                    sh "python -m runner.cli task configs/tasks/oc-project-health.yaml"
+                }
+            }
+        }
+    }
+    post { always { cleanWs() } }
+}

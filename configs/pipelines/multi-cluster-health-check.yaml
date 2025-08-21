@@ -1,0 +1,72 @@
+name: "Multi-Cluster Health Check"
+description: "Health check pipeline for multiple ROSA clusters"
+template: "health-check.html.j2"
+schedule: "0 6 * * *"  # Daily at 6 AM
+timeout: 7200  # 2 hours for multiple clusters
+
+# Define clusters to check
+clusters:
+  - name: "ROSA_SANDPIT"
+    server: "${ROSA_SANDPIT_SERVER}"
+    token: "${ROSA_SANDPIT_TOKEN}"
+    environment: "sandbox"
+    
+  - name: "ROSA_NON_PROD_PUB"
+    server: "${ROSA_NON_PROD_PUB_SERVER}"
+    token: "${ROSA_NON_PROD_PUB_TOKEN}"
+    environment: "non-prod"
+    
+  - name: "ROSA_NON_PROD_PRIV"
+    server: "${ROSA_NON_PROD_PRIV_SERVER}"
+    token: "${ROSA_NON_PROD_PRIV_TOKEN}"
+    environment: "non-prod"
+    
+  - name: "ROSA_PROD_PUB"
+    server: "${ROSA_PROD_PUB_SERVER}"
+    token: "${ROSA_PROD_PUB_TOKEN}"
+    environment: "prod"
+    
+  - name: "ROSA_PROD_PRIV"
+    server: "${ROSA_PROD_PRIV_SERVER}"
+    token: "${ROSA_PROD_PRIV_TOKEN}"
+    environment: "prod"
+
+# Health check definitions
+health_checks:
+  - name: "PendingPods"
+    type: "oc_cli"
+    command: "get"
+    args: ["pods", "--all-namespaces", "--field-selector=status.phase=Pending", "-o", "json"]
+    output_format: "json"
+    remediation_url: "https://docs.example.com/pending-pods"
+    auto_remediation_job_url: "https://jenkins.example.com/job/fix-pending-pods"
+    
+  - name: "NodeStatus"
+    type: "oc_cli"
+    command: "get"
+    args: ["nodes", "-o", "json"]
+    output_format: "json"
+    remediation_url: "https://docs.example.com/node-status"
+    auto_remediation_job_url: "https://jenkins.example.com/job/fix-node-status"
+    
+  - name: "APIServerHealth"
+    type: "rest_call"
+    url: "https://api.{cluster}.example.com/healthz"
+    method: "GET"
+    timeout: 30
+    remediation_url: "https://docs.example.com/api-server"
+    auto_remediation_job_url: "https://jenkins.example.com/job/fix-api-server"
+
+# Report configuration
+report_config:
+  template: "health-check.html.j2"
+  output_format: "html"
+  include_screenshots: false
+  send_notifications: true
+  notification_channels:
+    - "email"
+    - "slack"
+  # Group results by cluster
+  group_by: "cluster"
+  # Include cluster comparison
+  include_comparison: true

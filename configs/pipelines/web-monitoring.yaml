@@ -1,0 +1,38 @@
+name: "Web Monitoring Pipeline"
+description: "Monitor web applications and take screenshots"
+schedule: "0 */6 * * *"  # Every 6 hours
+timeout: 1800  # 30 minutes
+
+tasks:
+  - name: "Check Website Health"
+    type: "rest_call"
+    url: "https://example.com/health"
+    method: "GET"
+    timeout: 30
+    expected_status: 200
+
+  - name: "Take Dashboard Screenshot"
+    type: "web_screenshot"
+    url: "https://example.com/dashboard"
+    output_path: "screenshots/dashboards"
+    browser: "chrome"
+    headless: true
+    wait_for_element: ".dashboard-content"
+    delay: 3
+    full_page: true
+
+  - name: "Take Login Page Screenshot"
+    type: "web_screenshot"
+    url: "https://example.com/login"
+    output_path: "screenshots/pages"
+    browser: "chrome"
+    headless: true
+    wait_for_element: "#login-form"
+    delay: 2
+    full_page: false
+
+  - name: "Generate Report"
+    type: "shell"
+    command: "python"
+    args: ["-m", "runner.reporting.html", "--input", "screenshots/", "--output", "reports/web-monitoring.html"]
+    working_dir: "."

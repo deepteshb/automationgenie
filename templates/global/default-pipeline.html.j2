@@ -1,0 +1,146 @@
+{% extends "base/base.html.j2" %}
+
+{% block content %}
+    <!-- Report Metadata -->
+    <div class="report-meta">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">Pipeline Name</div>
+                <div class="meta-value">{{ pipeline_name | default('Pipeline Report') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Date</div>
+                <div class="meta-value">{{ execution_date | default(generated_at) }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Total Tasks</div>
+                <div class="meta-value">{{ tasks | length }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Duration</div>
+                <div class="meta-value">{{ total_duration | default('N/A') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-number status-success">{{ (tasks | selectattr('success', 'equalto', true) | list | length) }}</div>
+            <div class="stat-label">Successful</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-error">{{ (tasks | selectattr('success', 'equalto', false) | list | length) }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ (tasks | selectattr('duration') | map(attribute='duration') | sum) | round(2) }}s</div>
+            <div class="stat-label">Total Duration</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ (tasks | map(attribute='task_type') | unique | list | length) }}</div>
+            <div class="stat-label">Task Types</div>
+        </div>
+    </div>
+
+    <!-- Pipeline Results Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Output</th>
+                    <th>Error Details</th>
+                    <th>Executed On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <!-- Task Name -->
+                    <td>{{ task.name | default('Unnamed Task') }}</td>
+                    
+                    <!-- Type -->
+                    <td>{{ task.task_type | default('Unknown') }}</td>
+                    
+                    <!-- Status -->
+                    <td>
+                        {% if task.success %}
+                            <span class="status-success">Success</span>
+                        {% else %}
+                            <span class="status-error">Failed</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Duration -->
+                    <td>{{ task.duration | default('N/A') }}</td>
+                    
+                    <!-- Output -->
+                    <td>
+                        {% if task.output %}
+                            <div class="output-details" id="output-{{ loop.index }}">
+                                {{ task.output | truncate(100) }}
+                            </div>
+                            {% if task.output | length > 100 %}
+                                <span class="expand-btn" onclick="toggleOutput(document.getElementById('output-{{ loop.index }}'))">Expand</span>
+                            {% endif %}
+                        {% else %}
+                            <span>No output</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Error Details -->
+                    <td>
+                        {% if task.error %}
+                            <div class="output-details" id="error-{{ loop.index }}">
+                                {{ task.error | truncate(100) }}
+                            </div>
+                            {% if task.error | length > 100 %}
+                                <span class="expand-btn" onclick="toggleOutput(document.getElementById('error-{{ loop.index }}'))">Expand</span>
+                            {% endif %}
+                        {% else %}
+                            <span>No errors</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Executed On -->
+                    <td>{{ task.executed_on | default('N/A') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Task Type Breakdown -->
+    {% if task_type_breakdown %}
+    <div class="report-meta">
+        <h3>Task Type Breakdown</h3>
+        <div class="meta-grid">
+            {% for task_type, count in task_type_breakdown.items() %}
+            <div class="meta-item">
+                <div class="meta-label">{{ task_type | title }}</div>
+                <div class="meta-value">{{ count }} tasks</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pipeline Configuration -->
+    {% if pipeline_config %}
+    <div class="report-meta">
+        <h3>Pipeline Configuration</h3>
+        <div class="meta-grid">
+            {% for key, value in pipeline_config.items() %}
+            <div class="meta-item">
+                <div class="meta-label">{{ key | title }}</div>
+                <div class="meta-value">{{ value }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+name: "OpenShift Project Health Check"
+type: "oc_cli"
+description: "Check health status of OpenShift projects and resources"
+
+command: "get"
+args: ["pods", "--all-namespaces", "-o", "json"]
+output_format: "json"
+timeout: 300
+
+credentials:
+  method: "token"
+  token: "${OC_TOKEN}"
+  server: "${OC_SERVER}"
+
+# Optional: Filter specific namespaces
+namespace_filter:
+  include: ["production", "staging"]
+  exclude: ["kube-system", "default"]
+
+# Health check criteria
+health_criteria:
+  max_pod_restarts: 5
+  max_pod_age_hours: 24
+  required_pods:
+    - name: "app-frontend"
+      namespace: "production"
+    - name: "app-backend"
+      namespace: "production"

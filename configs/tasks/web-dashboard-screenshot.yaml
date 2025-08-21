@@ -1,0 +1,27 @@
+name: "web-dashboard-screenshot"
+description: "Take a screenshot of a web dashboard"
+task_type: "web_screenshot"
+
+# Task configuration
+config:
+  url: "https://example.com/dashboard"
+  output_path: "screenshots/dashboards"
+  browser: "chrome"
+  headless: true
+  window_size: "1920x1080"
+  delay: 3
+  full_page: true
+  
+  # Optional: Wait for specific element to load
+  wait_for_element: ".dashboard-content"
+  wait_timeout: 30
+
+# Credentials (if needed for authentication)
+credentials:
+  username: "${DASHBOARD_USERNAME}"
+  password: "${DASHBOARD_PASSWORD}"
+
+# Schedule (optional)
+schedule:
+  frequency: "daily"
+  time: "09:00"

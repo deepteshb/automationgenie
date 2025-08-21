@@ -1,0 +1,58 @@
+name: "On-Demand Insights"
+description: "Generate insights and analytics on demand"
+timeout: 1800  # 30 minutes
+
+tasks:
+  - name: "Collect OpenShift Metrics"
+    type: "oc_cli"
+    command: "get pods"
+    args: ["--all-namespaces", "-o", "json"]
+    output_format: "json"
+    timeout: 300
+    credentials:
+      method: "token"
+      token: "${OC_TOKEN}"
+      server: "${OC_SERVER}"
+
+  - name: "Collect AWS Cost Data"
+    type: "aws_cli"
+    command: "ce"
+    args: ["get-cost-and-usage", "--time-period", "Start=2024-01-01,End=2024-12-31", "--granularity", "MONTHLY", "--metrics", "BlendedCost"]
+    output_format: "json"
+    timeout: 300
+    credentials:
+      access_key_id: "${AWS_ACCESS_KEY_ID}"
+      secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+  - name: "Fetch Security Alerts"
+    type: "rest_call"
+    url: "https://security-api.example.com/alerts"
+    method: "GET"
+    timeout: 120
+    auth:
+      type: "bearer"
+      token: "${SECURITY_API_TOKEN}"
+    headers:
+      Content-Type: "application/json"
+
+  - name: "Analyze Data and Generate Insights"
+    type: "shell"
+    command: "python"
+    args: ["scripts/analyze_insights.py"]
+    working_dir: "${WORKSPACE}"
+    env_vars:
+      INSIGHTS_OUTPUT: "reports/insights_$(date +%Y%m%d_%H%M%S).html"
+      DATA_SOURCE: "combined"
+
+  - name: "Send Insights Report"
+    type: "rest_call"
+    url: "https://notification-service.example.com/send"
+    method: "POST"
+    timeout: 60
+    headers:
+      Content-Type: "application/json"
+    data:
+      recipient: "${INSIGHTS_RECIPIENT}"
+      subject: "Automation Insights Report"
+      template: "insights_report"
+      report_url: "${INSIGHTS_OUTPUT}"

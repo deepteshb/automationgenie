@@ -1,0 +1,39 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: playbook
+    image: your-artifactory.example.com/automation-tool:latest
+    command:
+    - cat
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  volumes:
+  - name: workspace
+    emptyDir: {}
+"""
+            defaultContainer 'playbook'
+        }
+    }
+    parameters {
+        string(name: 'TASK_PATH', defaultValue: 'configs/tasks/oc-project-health.yaml', description: 'Path to task YAML')
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Run Task') {
+            steps {
+                container('playbook') {
+                    sh "python -m runner.cli task ${params.TASK_PATH}"
+                }
+            }
+        }
+    }
+    post { always { cleanWs() } }
+}

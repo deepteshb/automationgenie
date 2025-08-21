@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = "your-artifactory.example.com/automation-tool:latest"
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Install Dependencies') {
+            steps { sh 'pip install -r requirements.txt' }
+        }
+        stage('Run Tests') {
+            steps { sh 'python -m pytest tests/' }
+        }
+        stage('Lint') {
+            steps { sh 'flake8 automation-tool/' }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Only build if tests pass
+                    sh "docker build -t ${IMAGE_NAME} ."
+                }
+            }
+        }
+        stage('Push to Artifactory') {
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'artifactory-creds', usernameVariable: 'ART_USER', passwordVariable: 'ART_PASS')]) {
+                    sh "echo $ART_PASS | docker login your-artifactory.example.com -u $ART_USER --password-stdin"
+                    sh "docker push ${IMAGE_NAME}"
+                }
+            }
+        }
+    }
+    post {
+        always { cleanWs() }
+        failure { echo "Build failed. Image not pushed." }
+        success { echo "Build and push successful." }
+    }
+}

@@ -1,0 +1,35 @@
+name: "Custom Task with Template"
+description: "Example task with custom template"
+type: "shell"
+template: "custom-task-template.html.j2"  # Custom template for this task
+
+# Task configuration
+command: "echo"
+args: ["Hello from custom task"]
+working_dir: "/tmp"
+timeout: 30
+
+# Custom template data
+template_data:
+  custom_field1: "Custom Value 1"
+  custom_field2: "Custom Value 2"
+  custom_table_data:
+    - name: "Item 1"
+      value: "Value 1"
+      status: "Active"
+    - name: "Item 2"
+      value: "Value 2"
+      status: "Inactive"
+
+# Health check data (if this is part of a health check)
+health_check_data:
+  platform: "CUSTOM_PLATFORM"
+  check_validated: "CustomCheck"
+  remediation_url: "https://docs.example.com/custom-check"
+  auto_remediation_job_url: "https://jenkins.example.com/job/custom-remediation"
+
+# Output processing
+output_processing:
+  extract_json: false
+  parse_lines: true
+  custom_parser: "custom_parser_function"

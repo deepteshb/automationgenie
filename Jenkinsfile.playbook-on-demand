@@ -1,0 +1,47 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: playbook
+    image: your-artifactory.example.com/automation-tool:latest
+    command:
+    - cat
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  volumes:
+  - name: workspace
+    emptyDir: {}
+"""
+            defaultContainer 'playbook'
+        }
+    }
+    parameters {
+        string(name: 'PLAYBOOK_PATH', defaultValue: 'configs/pipelines/multi-cluster-health-check.yaml', description: 'Path to playbook YAML')
+        string(name: 'REPORT_DIR', defaultValue: 'reports/', description: 'Directory to store reports')
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Run Playbook') {
+            steps {
+                container('playbook') {
+                    sh "python -m runner.cli run ${params.PLAYBOOK_PATH} -o ${params.REPORT_DIR}"
+                }
+            }
+        }
+        stage('Archive Report') {
+            steps {
+                container('playbook') {
+                    archiveArtifacts artifacts: "${params.REPORT_DIR}/**/*.html", allowEmptyArchive: true
+                }
+            }
+        }
+    }
+    post { always { cleanWs() } }
+}

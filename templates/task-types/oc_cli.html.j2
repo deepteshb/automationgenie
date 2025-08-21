@@ -1,0 +1,194 @@
+{% extends "base/base.html.j2" %}
+
+{% block content %}
+    <!-- Task Metadata -->
+    <div class="report-meta">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">Task Name</div>
+                <div class="meta-value">{{ task.name | default('OpenShift CLI Task') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Command</div>
+                <div class="meta-value">{{ task.command | default('N/A') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">OpenShift Server</div>
+                <div class="meta-value">{{ task.server | default('N/A') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Duration</div>
+                <div class="meta-value">{{ task.duration | default('N/A') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-number {% if task.success %}status-success{% else %}status-error{% endif %}">
+                {% if task.success %}Success{% else %}Failed{% endif %}
+            </div>
+            <div class="stat-label">Status</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ task.return_code | default('N/A') }}</div>
+            <div class="stat-label">Return Code</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ task.duration | default('N/A') }}</div>
+            <div class="stat-label">Duration</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ task.executed_on | default('N/A') }}</div>
+            <div class="stat-label">Executed On</div>
+        </div>
+    </div>
+
+    <!-- OpenShift CLI Results -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Arguments</th>
+                    <th>Return Code</th>
+                    <th>Output</th>
+                    <th>Error Output</th>
+                    <th>Execution Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <!-- Command -->
+                    <td>{{ task.command | default('N/A') }}</td>
+                    
+                    <!-- Arguments -->
+                    <td>
+                        {% if task.args %}
+                            <code>{{ task.args | join(' ') }}</code>
+                        {% else %}
+                            <span>No arguments</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Return Code -->
+                    <td>
+                        {% if task.return_code == 0 %}
+                            <span class="status-success">{{ task.return_code }}</span>
+                        {% else %}
+                            <span class="status-error">{{ task.return_code }}</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Output -->
+                    <td>
+                        {% if task.stdout %}
+                            <div class="output-details" id="stdout">
+                                {{ task.stdout | truncate(200) }}
+                            </div>
+                            {% if task.stdout | length > 200 %}
+                                <span class="expand-btn" onclick="toggleOutput(document.getElementById('stdout'))">Expand</span>
+                            {% endif %}
+                        {% else %}
+                            <span>No output</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Error Output -->
+                    <td>
+                        {% if task.stderr %}
+                            <div class="output-details" id="stderr">
+                                {{ task.stderr | truncate(200) }}
+                            </div>
+                            {% if task.stderr | length > 200 %}
+                                <span class="expand-btn" onclick="toggleOutput(document.getElementById('stderr'))">Expand</span>
+                            {% endif %}
+                        {% else %}
+                            <span>No errors</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Execution Time -->
+                    <td>{{ task.duration | default('N/A') }}</td>
+                    
+                    <!-- Status -->
+                    <td>
+                        {% if task.success %}
+                            <span class="status-success">Success</span>
+                        {% else %}
+                            <span class="status-error">Failed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Command Details -->
+    {% if task.command_details %}
+    <div class="report-meta">
+        <h3>Command Details</h3>
+        <div class="meta-grid">
+            {% for key, value in task.command_details.items() %}
+            <div class="meta-item">
+                <div class="meta-label">{{ key | title }}</div>
+                <div class="meta-value">{{ value }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Resource Information -->
+    {% if task.resources %}
+    <div class="report-meta">
+        <h3>Resource Information</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource Type</th>
+                        <th>Name</th>
+                        <th>Namespace</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for resource in task.resources %}
+                    <tr>
+                        <td>{{ resource.type | default('N/A') }}</td>
+                        <td>{{ resource.name | default('N/A') }}</td>
+                        <td>{{ resource.namespace | default('N/A') }}</td>
+                        <td>
+                            {% if resource.status == 'Running' or resource.status == 'Active' %}
+                                <span class="status-success">{{ resource.status }}</span>
+                            {% elif resource.status == 'Pending' %}
+                                <span class="status-pending">{{ resource.status }}</span>
+                            {% else %}
+                                <span class="status-error">{{ resource.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ resource.details | default('N/A') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if task.recommendations %}
+    <div class="report-meta">
+        <h3>Recommendations</h3>
+        <ul>
+            {% for recommendation in task.recommendations %}
+            <li>{{ recommendation }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+{% endblock %}

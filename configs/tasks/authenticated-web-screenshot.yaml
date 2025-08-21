@@ -1,0 +1,39 @@
+name: "authenticated-web-screenshot"
+description: "Take a screenshot of an authenticated web page"
+task_type: "web_screenshot"
+
+# Task configuration
+config:
+  url: "https://app.example.com/login"
+  output_path: "screenshots/authenticated"
+  browser: "chrome"
+  headless: true
+  window_size: "1920x1080"
+  delay: 5
+  full_page: true
+  
+  # Wait for login form to load
+  wait_for_element: "#login-form"
+  wait_timeout: 30
+  
+  # Custom JavaScript to handle authentication
+  pre_screenshot_script: |
+    // Fill in login form
+    document.getElementById('username').value = '${USERNAME}';
+    document.getElementById('password').value = '${PASSWORD}';
+    
+    // Submit form
+    document.getElementById('login-form').submit();
+    
+    // Wait for redirect to complete
+    return new Promise(resolve => setTimeout(resolve, 3000));
+
+# Credentials
+credentials:
+  username: "${APP_USERNAME}"
+  password: "${APP_PASSWORD}"
+
+# Schedule
+schedule:
+  frequency: "hourly"
+  time: "00:00"

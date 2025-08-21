@@ -1,0 +1,40 @@
+name: "AWS Cost Snapshot"
+type: "aws_cli"
+description: "Generate cost and usage snapshot for AWS resources"
+
+command: "ce"
+args: 
+  - "get-cost-and-usage"
+  - "--time-period"
+  - "Start=2024-01-01,End=2024-12-31"
+  - "--granularity"
+  - "MONTHLY"
+  - "--metrics"
+  - "BlendedCost"
+  - "--group-by"
+  - "Type=DIMENSION,Key=SERVICE"
+output_format: "json"
+timeout: 300
+
+credentials:
+  access_key_id: "${AWS_ACCESS_KEY_ID}"
+  secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+# Cost analysis parameters
+cost_analysis:
+  regions: ["us-east-1", "us-west-2", "eu-west-1"]
+  services_to_monitor:
+    - "Amazon EC2"
+    - "Amazon RDS"
+    - "Amazon S3"
+    - "AWS Lambda"
+  
+  alert_thresholds:
+    monthly_increase_percent: 20
+    total_monthly_cost: 10000
+
+# Output configuration
+output:
+  format: "csv"
+  filename: "aws_cost_snapshot_$(date +%Y%m%d).csv"
+  include_breakdown: true

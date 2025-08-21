@@ -1,0 +1,226 @@
+{% extends "base/base.html.j2" %}
+
+{% block content %}
+    <!-- Report Metadata -->
+    <div class="report-meta">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">Pipeline Name</div>
+                <div class="meta-value">{{ pipeline_name | default('Multi-Cluster Health Check') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Date</div>
+                <div class="meta-value">{{ execution_date | default(generated_at) }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Total Clusters</div>
+                <div class="meta-value">{{ clusters | length }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Total Checks</div>
+                <div class="meta-value">{{ checks | length }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cluster Summary Statistics -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-number status-success">{{ (checks | selectattr('status', 'equalto', 'Success') | list | length) }}</div>
+            <div class="stat-label">Successful Checks</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-error">{{ (checks | selectattr('status', 'equalto', 'Error') | list | length) }}</div>
+            <div class="stat-label">Errors</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-fail">{{ (checks | selectattr('status', 'equalto', 'Fail') | list | length) }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ (checks | map(attribute='cluster') | unique | list | length) }}</div>
+            <div class="stat-label">Clusters Checked</div>
+        </div>
+    </div>
+
+    <!-- Cluster Comparison Table -->
+    <div class="report-meta">
+        <h3>Cluster Comparison</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cluster</th>
+                        <th>Environment</th>
+                        <th>Total Checks</th>
+                        <th>Success</th>
+                        <th>Errors</th>
+                        <th>Failed</th>
+                        <th>Success Rate</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cluster_name in checks | map(attribute='cluster') | unique | list | sort %}
+                    {% set cluster_checks = checks | selectattr('cluster', 'equalto', cluster_name) | list %}
+                    {% set success_count = cluster_checks | selectattr('status', 'equalto', 'Success') | list | length %}
+                    {% set error_count = cluster_checks | selectattr('status', 'equalto', 'Error') | list | length %}
+                    {% set fail_count = cluster_checks | selectattr('status', 'equalto', 'Fail') | list | length %}
+                    {% set total_count = cluster_checks | length %}
+                    {% set success_rate = (success_count / total_count * 100) | round(1) if total_count > 0 else 0 %}
+                    <tr>
+                        <td><strong>{{ cluster_name }}</strong></td>
+                        <td>{{ cluster_checks[0].environment | default('Unknown') }}</td>
+                        <td>{{ total_count }}</td>
+                        <td><span class="status-success">{{ success_count }}</span></td>
+                        <td><span class="status-error">{{ error_count }}</span></td>
+                        <td><span class="status-fail">{{ fail_count }}</span></td>
+                        <td>
+                            {% if success_rate >= 90 %}
+                                <span class="status-success">{{ success_rate }}%</span>
+                            {% elif success_rate >= 70 %}
+                                <span class="status-fail">{{ success_rate }}%</span>
+                            {% else %}
+                                <span class="status-error">{{ success_rate }}%</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if error_count == 0 and fail_count == 0 %}
+                                <span class="status-success">Healthy</span>
+                            {% elif error_count > 0 %}
+                                <span class="status-error">Critical</span>
+                            {% else %}
+                                <span class="status-fail">Warning</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detailed Health Check Results by Cluster -->
+    {% for cluster_name in checks | map(attribute='cluster') | unique | list | sort %}
+    <div class="report-meta">
+        <h3>{{ cluster_name }} - Detailed Results</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Check Validated</th>
+                        <th>Output Details</th>
+                        <th>Errors in Output</th>
+                        <th>Check Executed On</th>
+                        <th>Time Taken</th>
+                        <th>Status</th>
+                        <th>Remediation</th>
+                        <th>Auto Remediation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for check in checks | selectattr('cluster', 'equalto', cluster_name) | list %}
+                    <tr>
+                        <!-- Check Validated -->
+                        <td>{{ check.check_validated | default('N/A') }}</td>
+                        
+                        <!-- Output Details -->
+                        <td>
+                            <div class="output-details" id="output-{{ cluster_name }}-{{ loop.index }}">
+                                {{ check.output_details | default('No output available') | truncate(100) }}
+                            </div>
+                            {% if check.output_details and check.output_details | length > 100 %}
+                                <span class="expand-btn" onclick="toggleOutput(document.getElementById('output-{{ cluster_name }}-{{ loop.index }}'))">Expand</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Errors in Output -->
+                        <td>
+                            {% if check.errors_in_output %}
+                                <span class="status-error">True</span>
+                            {% else %}
+                                <span class="status-success">False</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Check Executed On -->
+                        <td>{{ check.executed_on | default('N/A') }}</td>
+                        
+                        <!-- Time Taken -->
+                        <td>{{ check.time_taken | default('N/A') }}</td>
+                        
+                        <!-- Status -->
+                        <td>
+                            {% if check.status == 'Error' %}
+                                <span class="status-error">{{ check.status }}</span>
+                            {% elif check.status == 'Fail' %}
+                                <span class="status-fail">{{ check.status }}</span>
+                            {% elif check.status == 'Success' %}
+                                <span class="status-success">{{ check.status }}</span>
+                            {% elif check.status == 'Pending' %}
+                                <span class="status-pending">{{ check.status }}</span>
+                            {% else %}
+                                <span>{{ check.status | default('Unknown') }}</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Remediation -->
+                        <td>
+                            {% if check.remediation_url %}
+                                <a href="{{ check.remediation_url }}" target="_blank" class="btn btn-secondary">Documentation</a>
+                            {% else %}
+                                <span>No documentation available</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Auto Remediation -->
+                        <td>
+                            {% if check.auto_remediation_job_url %}
+                                <button 
+                                    class="btn btn-primary" 
+                                    onclick="executeRemediation('{{ check.auto_remediation_job_url }}', '{{ check.check_validated }} - {{ cluster_name }}')"
+                                    title="Execute auto-remediation for {{ check.check_validated }} on {{ cluster_name }}"
+                                >
+                                    Execute Remediation
+                                </button>
+                            {% else %}
+                                <span>No Auto-Remediation Identified</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Environment Summary -->
+    {% if environment_summary %}
+    <div class="report-meta">
+        <h3>Environment Summary</h3>
+        <div class="meta-grid">
+            {% for env, stats in environment_summary.items() %}
+            <div class="meta-item">
+                <div class="meta-label">{{ env | title }}</div>
+                <div class="meta-value">
+                    {{ stats.clusters }} clusters, {{ stats.success_rate }}% success rate
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if recommendations %}
+    <div class="report-meta">
+        <h3>Recommendations</h3>
+        <ul>
+            {% for recommendation in recommendations %}
+            <li>{{ recommendation }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+{% endblock %}

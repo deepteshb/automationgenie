@@ -1,0 +1,45 @@
+name: "Tufin Ticket Pull"
+type: "rest_call"
+description: "Pull tickets from Tufin API for network security management"
+
+url: "https://tufin-api.example.com/api/v1/tickets"
+method: "GET"
+timeout: 120
+
+auth:
+  type: "bearer"
+  token: "${TUFIN_API_TOKEN}"
+
+headers:
+  Content-Type: "application/json"
+  Accept: "application/json"
+
+params:
+  status: "open"
+  priority: "high,medium"
+  limit: 100
+  sort_by: "created_date"
+  sort_order: "desc"
+
+# Response processing
+response_processing:
+  extract_fields:
+    - "ticket_id"
+    - "title"
+    - "status"
+    - "priority"
+    - "created_date"
+    - "assignee"
+  
+  filter_criteria:
+    min_priority: "medium"
+    max_age_days: 30
+  
+  output_format: "json"
+  output_file: "tufin_tickets_$(date +%Y%m%d_%H%M%S).json"
+
+# Notification settings
+notifications:
+  on_new_tickets: true
+  recipients: ["security-team@example.com"]
+  threshold: 5  # Alert if more than 5 new tickets

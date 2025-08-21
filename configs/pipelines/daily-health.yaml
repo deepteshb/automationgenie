@@ -1,0 +1,42 @@
+name: "Daily Health Check"
+description: "Daily health check pipeline for infrastructure and services"
+schedule: "0 6 * * *"  # Daily at 6 AM
+timeout: 3600  # 1 hour
+
+tasks:
+  - name: "Check OpenShift Cluster Health"
+    type: "oc_cli"
+    command: "get nodes"
+    args: ["-o", "json"]
+    output_format: "json"
+    timeout: 300
+    credentials:
+      method: "token"
+      token: "${OC_TOKEN}"
+      server: "${OC_SERVER}"
+
+  - name: "Check AWS Service Health"
+    type: "aws_cli"
+    command: "health"
+    args: ["describe-events", "--region", "us-east-1"]
+    output_format: "json"
+    timeout: 300
+    credentials:
+      access_key_id: "${AWS_ACCESS_KEY_ID}"
+      secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+  - name: "Check API Endpoints"
+    type: "rest_call"
+    url: "https://api.example.com/health"
+    method: "GET"
+    timeout: 60
+    headers:
+      Content-Type: "application/json"
+
+  - name: "Generate Health Report"
+    type: "shell"
+    command: "python"
+    args: ["scripts/generate_health_report.py"]
+    working_dir: "${WORKSPACE}"
+    env_vars:
+      REPORT_OUTPUT: "reports/daily_health_$(date +%Y%m%d).html"

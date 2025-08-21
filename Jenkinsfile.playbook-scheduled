@@ -1,0 +1,46 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: playbook
+    image: your-artifactory.example.com/automation-tool:latest
+    command:
+    - cat
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  volumes:
+  - name: workspace
+    emptyDir: {}
+"""
+            defaultContainer 'playbook'
+        }
+    }
+    triggers {
+        cron('0 6 * * *') // Every day at 6 AM
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Run Playbook') {
+            steps {
+                container('playbook') {
+                    sh "python -m runner.cli run configs/pipelines/multi-cluster-health-check.yaml -o reports/"
+                }
+            }
+        }
+        stage('Archive Report') {
+            steps {
+                container('playbook') {
+                    archiveArtifacts artifacts: 'reports/**/*.html', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+    post { always { cleanWs() } }
+}

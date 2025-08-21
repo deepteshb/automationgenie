@@ -1,0 +1,166 @@
+{% extends "base/base.html.j2" %}
+
+{% block content %}
+    <!-- Report Metadata -->
+    <div class="report-meta">
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">Pipeline Name</div>
+                <div class="meta-value">{{ pipeline_name | default('Daily Health Check') }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Date</div>
+                <div class="meta-value">{{ execution_date | default(generated_at) }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Total Checks</div>
+                <div class="meta-value">{{ checks | length }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Execution Duration</div>
+                <div class="meta-value">{{ total_duration | default('N/A') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="stat-number status-success">{{ (checks | selectattr('status', 'equalto', 'Success') | list | length) }}</div>
+            <div class="stat-label">Successful</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-error">{{ (checks | selectattr('status', 'equalto', 'Error') | list | length) }}</div>
+            <div class="stat-label">Errors</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-fail">{{ (checks | selectattr('status', 'equalto', 'Fail') | list | length) }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number status-pending">{{ (checks | selectattr('status', 'equalto', 'Pending') | list | length) }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+
+    <!-- Health Check Results Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Platform</th>
+                    <th>Check Validated</th>
+                    <th>Output Details</th>
+                    <th>Errors in Output</th>
+                    <th>Check Executed On</th>
+                    <th>Time Taken</th>
+                    <th>Status</th>
+                    <th>Remediation</th>
+                    <th>Auto Remediation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for check in checks %}
+                <tr>
+                    <!-- Platform -->
+                    <td>{{ check.platform | default('N/A') }}</td>
+                    
+                    <!-- Check Validated -->
+                    <td>{{ check.check_validated | default('N/A') }}</td>
+                    
+                    <!-- Output Details -->
+                    <td>
+                        <div class="output-details" id="output-{{ loop.index }}">
+                            {{ check.output_details | default('No output available') | truncate(100) }}
+                        </div>
+                        {% if check.output_details and check.output_details | length > 100 %}
+                            <span class="expand-btn" onclick="toggleOutput(document.getElementById('output-{{ loop.index }}'))">Expand</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Errors in Output -->
+                    <td>
+                        {% if check.errors_in_output %}
+                            <span class="status-error">True</span>
+                        {% else %}
+                            <span class="status-success">False</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Check Executed On -->
+                    <td>{{ check.executed_on | default('N/A') }}</td>
+                    
+                    <!-- Time Taken -->
+                    <td>{{ check.time_taken | default('N/A') }}</td>
+                    
+                    <!-- Status -->
+                    <td>
+                        {% if check.status == 'Error' %}
+                            <span class="status-error">{{ check.status }}</span>
+                        {% elif check.status == 'Fail' %}
+                            <span class="status-fail">{{ check.status }}</span>
+                        {% elif check.status == 'Success' %}
+                            <span class="status-success">{{ check.status }}</span>
+                        {% elif check.status == 'Pending' %}
+                            <span class="status-pending">{{ check.status }}</span>
+                        {% else %}
+                            <span>{{ check.status | default('Unknown') }}</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Remediation -->
+                    <td>
+                        {% if check.remediation_url %}
+                            <a href="{{ check.remediation_url }}" target="_blank" class="btn btn-secondary">Documentation</a>
+                        {% else %}
+                            <span>No documentation available</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Auto Remediation -->
+                    <td>
+                        {% if check.auto_remediation_job_url %}
+                            <button 
+                                class="btn btn-primary" 
+                                onclick="executeRemediation('{{ check.auto_remediation_job_url }}', '{{ check.check_validated }}')"
+                                title="Execute auto-remediation for {{ check.check_validated }}"
+                            >
+                                Execute Remediation
+                            </button>
+                        {% else %}
+                            <span>No Auto-Remediation Identified</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Additional Information -->
+    {% if additional_info %}
+    <div class="report-meta">
+        <h3>Additional Information</h3>
+        <div class="meta-grid">
+            {% for key, value in additional_info.items() %}
+            <div class="meta-item">
+                <div class="meta-label">{{ key | title }}</div>
+                <div class="meta-value">{{ value }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if recommendations %}
+    <div class="report-meta">
+        <h3>Recommendations</h3>
+        <ul>
+            {% for recommendation in recommendations %}
+            <li>{{ recommendation }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+{% endblock %}

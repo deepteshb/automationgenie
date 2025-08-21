@@ -1,0 +1,70 @@
+name: "Daily Health Check"
+description: "Daily health check pipeline with custom template"
+template: "health-check.html.j2"  # Use the health check template
+schedule: "0 6 * * *"  # Daily at 6 AM
+timeout: 3600  # 1 hour
+
+tasks:
+  - name: "Check Pending Pods"
+    type: "oc_cli"
+    template: "oc_cli.html.j2"  # Task-specific template
+    command: "get"
+    args: ["pods", "--field-selector=status.phase=Pending", "-o", "json"]
+    output_format: "json"
+    credentials:
+      method: "token"
+      token: "${OC_TOKEN}"
+      server: "${OC_SERVER}"
+    # Health check specific data
+    health_check_data:
+      platform: "ROSA_SANDPIT"
+      check_validated: "PendingPods"
+      remediation_url: "https://docs.example.com/pending-pods"
+      auto_remediation_job_url: "https://jenkins.example.com/job/fix-pending-pods"
+
+  - name: "Check Node Status"
+    type: "oc_cli"
+    command: "get"
+    args: ["nodes", "-o", "json"]
+    output_format: "json"
+    credentials:
+      method: "token"
+      token: "${OC_TOKEN}"
+      server: "${OC_SERVER}"
+    health_check_data:
+      platform: "ROSA_SANDPIT"
+      check_validated: "NodeStatus"
+      remediation_url: "https://docs.example.com/node-status"
+      auto_remediation_job_url: "https://jenkins.example.com/job/fix-node-status"
+
+  - name: "Check API Server Health"
+    type: "rest_call"
+    url: "https://api.rosa-sandpit.example.com/healthz"
+    method: "GET"
+    timeout: 30
+    health_check_data:
+      platform: "ROSA_SANDPIT"
+      check_validated: "APIServerHealth"
+      remediation_url: "https://docs.example.com/api-server"
+      auto_remediation_job_url: "https://jenkins.example.com/job/fix-api-server"
+
+  - name: "Check Storage Usage"
+    type: "shell"
+    command: "df"
+    args: ["-h"]
+    working_dir: "/tmp"
+    health_check_data:
+      platform: "ROSA_SANDPIT"
+      check_validated: "StorageUsage"
+      remediation_url: "https://docs.example.com/storage"
+      auto_remediation_job_url: "https://jenkins.example.com/job/cleanup-storage"
+
+# Report configuration
+report_config:
+  template: "health-check.html.j2"
+  output_format: "html"
+  include_screenshots: true
+  send_notifications: true
+  notification_channels:
+    - "email"
+    - "slack"
